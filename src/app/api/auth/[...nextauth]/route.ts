@@ -1,9 +1,5 @@
-import NextAuth from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { handlers } from "@/lib/auth-instance";
 
-// NextAuth v5 beta structure
-const nextAuth = NextAuth(authOptions);
-
-export const { handlers, auth } = nextAuth;
+// Export only HTTP handlers (Next.js route restriction)
 export const { GET, POST } = handlers;
 

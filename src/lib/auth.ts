@@ -1,4 +1,4 @@
-import { NextAuthOptions } from "next-auth";
+import type { NextAuthConfig } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
@@ -36,7 +36,7 @@ type SessionRow = RowDataPacket & {
   expires: Date;
 };
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthConfig = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -49,10 +49,13 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        const email = credentials.email as string;
+        const password = credentials.password as string;
+
         const pool = getPool();
         const [rows] = await pool.query<UserRow[]>(
           "SELECT id, email, password, name, role, image FROM users WHERE email = ? AND role = 'admin' LIMIT 1",
-          [credentials.email]
+          [email]
         );
 
         const user = rows[0];
@@ -60,7 +63,7 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const isValid = await bcrypt.compare(credentials.password, user.password);
+        const isValid = await bcrypt.compare(password, user.password);
         if (!isValid) {
           return null;
         }
@@ -159,13 +162,6 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-// Export auth function for use in middleware and server components
-// Note: This is a workaround for NextAuth v5 beta compatibility
-export async function getAuth() {
-  const { auth } = await import("next-auth");
-  return auth(authOptions);
-}
-
 declare module "next-auth" {
   interface Session {
     user: {
@@ -182,10 +178,7 @@ declare module "next-auth" {
   }
 }
 
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-    role: "admin" | "user";
-  }
-}
+// JWT type augmentation for NextAuth v5
+// In v5, JWT types are handled through the callbacks, not module augmentation
+// The JWT interface is extended in the jwt callback
 
