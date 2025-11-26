@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
 import { ROOM_STATUSES } from "@/constants/rooms";
 import { getPool } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth-helpers";
 
 type RoomRow = RowDataPacket & {
   id: number;
@@ -72,6 +73,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   const roomId = Number(params.id);
   if (!roomId) {
     return NextResponse.json({ message: "Invalid room id." }, { status: 400 });
@@ -131,6 +135,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   const roomId = Number(params.id);
   if (!roomId) {
     return NextResponse.json({ message: "Invalid room id." }, { status: 400 });

@@ -8,6 +8,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 import { ROOM_STATUSES, type RoomStatus } from "@/constants/rooms";
 
@@ -34,6 +36,8 @@ const currency = new Intl.NumberFormat("en-US", {
 });
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [form, setForm] = useState(() => ({ ...emptyForm }));
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -41,6 +45,14 @@ export default function Home() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const isAdmin = session?.user?.role === "admin";
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
 
   const stats = useMemo(() => {
     const total = rooms.length;
@@ -159,20 +171,50 @@ export default function Home() {
     }
   };
 
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-slate-600">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 pb-16">
       <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-6 py-12 text-white shadow-lg">
         <div className="mx-auto max-w-5xl">
-          <p className="text-sm uppercase tracking-[0.2em] text-slate-300">
-            Hotel Management
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">
-            Rooms dashboard
-          </h1>
-          <p className="mt-4 max-w-2xl text-slate-200">
-            Track inventory, pricing, and occupancy in one lightweight CRUD
-            interface built with Next.js and MySQL.
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.2em] text-slate-300">
+                Hotel Management
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">
+                Rooms dashboard
+              </h1>
+              <p className="mt-4 max-w-2xl text-slate-200">
+                Track inventory, pricing, and occupancy in one lightweight CRUD
+                interface built with Next.js and MySQL.
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <div className="text-right">
+                <p className="text-sm text-slate-300">{session.user.email}</p>
+                <p className="text-xs text-slate-400">
+                  {isAdmin ? "Admin" : "View Only"}
+                </p>
+              </div>
+              <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Total rooms" value={stats.total} />
             <StatCard label="Available" value={stats.available} />
@@ -182,9 +224,10 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto mt-[-4rem] w-full max-w-5xl px-4">
-        <div className="rounded-2xl bg-white p-6 shadow-xl ring-1 ring-black/5">
-          <form onSubmit={handleSubmit} className="space-y-4">
+      {isAdmin && (
+        <section className="mx-auto mt-[-4rem] w-full max-w-5xl px-4">
+          <div className="rounded-2xl bg-white p-6 shadow-xl ring-1 ring-black/5">
+            <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex flex-col gap-1">
               <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                 {editingId ? "Update room" : "Add a new room"}
@@ -279,6 +322,7 @@ export default function Home() {
           </form>
         </div>
       </section>
+      )}
 
       <section className="mx-auto mt-10 w-full max-w-5xl px-4">
         <div className="rounded-2xl bg-white p-6 shadow-lg ring-1 ring-black/5">
@@ -287,6 +331,7 @@ export default function Home() {
               <h2 className="text-xl font-semibold text-slate-900">All rooms</h2>
               <p className="text-sm text-slate-500">
                 {loading ? "Loading rooms..." : `${rooms.length} rooms found`}
+                {!isAdmin && " (View Only Mode)"}
               </p>
             </div>
             <button
@@ -338,20 +383,24 @@ export default function Home() {
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleEdit(room)}
-                            className="text-sm font-semibold text-slate-600 hover:text-slate-900"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(room)}
-                            className="text-sm font-semibold text-red-600 hover:text-red-700"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        {isAdmin ? (
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => handleEdit(room)}
+                              className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(room)}
+                              className="text-sm font-semibold text-red-600 hover:text-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">View Only</span>
+                        )}
                       </td>
                     </tr>
                   ))

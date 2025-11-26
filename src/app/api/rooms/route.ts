@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
 import { ROOM_STATUSES } from "@/constants/rooms";
 import { getPool } from "@/lib/db";
+import { requireAuth, requireAdmin } from "@/lib/auth-helpers";
 
 type RoomRow = RowDataPacket & {
   id: number;
@@ -64,6 +65,9 @@ function validatePayload(payload: any) {
 export const runtime = "nodejs";
 
 export async function GET() {
+  const { error } = await requireAuth();
+  if (error) return error;
+
   try {
     const pool = getPool();
     const [rows] = await pool.query<RoomRow[]>(
@@ -80,6 +84,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const payload = await request.json();
     const { errors, data } = validatePayload(payload);

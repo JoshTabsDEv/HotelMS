@@ -24,6 +24,10 @@ export function getPool(): Pool {
       port,
       waitForConnections: true,
       connectionLimit: 10,
+      // SSL is required for DigitalOcean managed databases
+      ssl: process.env.MYSQL_SSL === "true" ? {
+        rejectUnauthorized: false, // DigitalOcean uses self-signed certificates
+      } : undefined,
     });
   }
 
